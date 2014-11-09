@@ -5,22 +5,46 @@
 // by: letsfix.net
 
 
-// Load Google API Client Library
-// <script src = "https://apis.google.com/js/client.js?onload=handleClientLoad" >
-
-
-var getTabInfo = function(){
+var gatherTabInfo = function(){
   chrome.tabs.query({'active': true, 'lastFocusedWindow': true}, function(tabs){
     var url = tabs[0].url;
     var title = tabs[0].title;
 
-    // escape special characters to prep for base64 encoding
-    url = encodeWeirdChars(url);
-    title = encodeWeirdChars(title);
-
-    askForComments(url, title);
+    passInfoToPopup(url, title);
   });
 };
+
+
+var passInfoToPopup = function(url, title){
+  $('#pageURL').html(url);
+//  $('#pageURL').attr('href', url);    // commented out due to focus bug.
+  $('#pageTitle').html(title);
+  $('#commentField').focus();
+};
+
+
+document.addEventListener('DOMContentLoaded', function() {
+
+  $('#submitComment').click(function (e) {
+    e.preventDefault();
+    collectComment();
+  });
+});
+
+
+var collectComment = function(){
+  var url = $('#pageURL').html();
+  var title = $('#pageTitle').html();
+
+  // escape special characters to prep for base64 encoding
+  url = encodeWeirdChars(url);
+  title = encodeWeirdChars(title);
+
+  var comment = $('#commentField').val();
+
+  buildMessage(url, title, comment);
+
+}
 
 
 var encodeWeirdChars = function(string){
@@ -28,16 +52,6 @@ var encodeWeirdChars = function(string){
   var normalSpaces = encoded.replace(/%20/g," ");
   return normalSpaces;
 };
-
-
-var askForComments = function(url, title){
-  var comment = "";
-
-  // TODO: Show input field in popup.html to ask for comments
-
-  buildMessage(url, title, comment);
-}
-
 
 
 var buildMessage = function(url, title, comment){
@@ -57,14 +71,14 @@ var auth = function(message){
     
     console.log(token);
 
-    sendMessage(message);
+    sendMessage(message, noteSuccess() );
   });
 
 };
 
 
 // Send mail through SMTP with Gmail OAuth API
-// see: https://developers.google.com/gmail/api/v1/reference/users/messages/send
+// see https://developers.google.com/gmail/api/v1/reference/users/messages/send
 var sendMessage = function(message, callback){
   var base64EncodedEmail = btoa(message);
   var request = gapi.client.gmail.users.messages.send({
@@ -78,13 +92,12 @@ var sendMessage = function(message, callback){
 };
 
 
-// TODO: Display a notification for sending success
 var noteSuccess = function(){
+  document.body.innerHTML = "<h3>Success...?</h3>";
 };
 
 
-// Called when the user clicks on the browser action.
-chrome.browserAction.onClicked.addListener(function(tab) {
-  var action_url = getTabInfo();
-  chrome.tabs.update(tab.id, {url: action_url});
+// Begin running our script as soon as the document's DOM is ready.
+document.addEventListener('DOMContentLoaded', function () {
+  gatherTabInfo();
 });
